@@ -177,7 +177,7 @@ sub checkInItem {
     
     try {
         # Get the current branch from user environment, fallback to item's homebranch
-        my $branch = C4::Context->userenv->{branch} || $item->homebranch;
+        my $branch = C4::Context->userenv->{branch} || $item->holdingbranch;
         my $return_date = $date ? dt_from_string($date) : dt_from_string();
 
         # Use Koha's proper circulation system for check-in
@@ -423,7 +423,7 @@ sub renewItem {
         }
 
         # Get the current branch from user environment
-        my $branch = C4::Context->userenv->{branch} || $item->homebranch;
+        my $branch = C4::Context->userenv->{branch} || $item->holdinbranch;
 
 
 
