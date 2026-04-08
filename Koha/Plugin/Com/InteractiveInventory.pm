@@ -172,7 +172,7 @@ sub start_session {
         my $common_params = {
             minlocation  => $minLocation,
             maxlocation  => $maxLocation,
-            branch       => 'homebranch',
+            branch       => 'holdingbranch',
             branchcode   => $selectedbranchcode,
             ccode        => $ccode,
         };
