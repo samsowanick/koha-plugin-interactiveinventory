@@ -177,7 +177,7 @@ sub checkInItem {
     
     try {
         # Get the current branch from user environment, fallback to item's homebranch
-        my $branch = C4::Context->userenv->{branch} || $item->holdingbranch;
+        my $branch = C4::Context->userenv->{branch} || $item->homebranch;
         my $return_date = $date ? dt_from_string($date) : dt_from_string();
 
         # Use Koha's proper circulation system for check-in
@@ -423,7 +423,7 @@ sub renewItem {
         }
 
         # Get the current branch from user environment
-        my $branch = C4::Context->userenv->{branch} || $item->holdingbranch;
+        my $branch = C4::Context->userenv->{branch} || $item->homebranch;
 
 
 
@@ -483,11 +483,17 @@ Optimized for speed with simple range queries.
 sub shelfBrowser {
     my $c = shift->openapi->valid_input or return;
 
-    my $itemnumber = $c->validation->param('itemnumber');
+    my $itemnumber    = $c->validation->param('itemnumber');
     my $num_each_side = $c->validation->param('num_each_side') // 5;
-    my $homebranch = $c->validation->param('homebranch');
-    my $location = $c->validation->param('location');
-    my $ccode = $c->validation->param('ccode');
+    my $homebranch    = $c->validation->param('homebranch');
+    my $location      = $c->validation->param('location');
+    my $ccode         = $c->validation->param('ccode');
+
+    # 'homebranch' or 'holdingbranch' — controls which branch column is used
+    # for the shelf-neighbor query, matching the session's branchFilter setting.
+    my $branchfilter  = $c->validation->param('branchfilter') // 'homebranch';
+    $branchfilter = 'homebranch'
+        unless $branchfilter eq 'holdingbranch' || $branchfilter eq 'homebranch';
 
     unless ($itemnumber) {
         return $c->render(
@@ -507,20 +513,24 @@ sub shelfBrowser {
     try {
         my $dbh = C4::Context->dbh;
         my $start_cn_sort = $item->cn_sort // '';
-        
-        # Use provided filters or fall back to item's values
-        my $filter_homebranch = $homebranch // $item->homebranch;
-        my $filter_location = $location // $item->location;
-        my $filter_ccode = $ccode // $item->ccode;
+
+        # Use provided filters or fall back to the item's own values,
+        # respecting the active branch filter mode.
+        my $item_branch = $branchfilter eq 'holdingbranch'
+            ? $item->holdingbranch
+            : $item->homebranch;
+        my $filter_branch    = $homebranch // $item_branch;
+        my $filter_location  = $location   // $item->location;
+        my $filter_ccode     = $ccode      // $item->ccode;
 
         # Build WHERE conditions - simple AND conditions use indexes well
         # Exclude items without call numbers (NULL or empty)
         my @conditions = ("cn_sort IS NOT NULL", "cn_sort != ''", "itemcallnumber IS NOT NULL", "itemcallnumber != ''");
         my @params;
 
-        if ($filter_homebranch) {
-            push @conditions, 'homebranch = ?';
-            push @params, $filter_homebranch;
+        if ($filter_branch) {
+            push @conditions, "$branchfilter = ?";
+            push @params, $filter_branch;
         }
         if ($filter_location) {
             push @conditions, 'location = ?';
@@ -561,10 +571,11 @@ sub shelfBrowser {
         return $c->render(
             status => 200,
             openapi => {
-                items => \@items,
-                starting_homebranch => $filter_homebranch ? { code => $filter_homebranch } : undef,
+                items             => \@items,
+                branch_filter     => $branchfilter,
+                starting_branch   => $filter_branch   ? { code => $filter_branch   } : undef,
                 starting_location => $filter_location ? { code => $filter_location } : undef,
-                starting_ccode => $filter_ccode ? { code => $filter_ccode } : undef,
+                starting_ccode    => $filter_ccode    ? { code => $filter_ccode    } : undef,
             }
         );
     } catch {
