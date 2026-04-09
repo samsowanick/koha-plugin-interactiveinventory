@@ -423,7 +423,7 @@ sub renewItem {
         }
 
         # Get the current branch from user environment
-        my $branch = C4::Context->userenv->{branch} || $item->holdinbranch;
+        my $branch = C4::Context->userenv->{branch} || $item->holdingbranch;
 
 
 
