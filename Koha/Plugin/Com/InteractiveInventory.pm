@@ -14,7 +14,6 @@ use C4::Auth   qw( get_template_and_user );
 use C4::Output qw( output_html_with_http_headers );
 use C4::Items  qw( GetItemsForInventory );
 use Koha::Items;
-use Koha::ItemTypes;
 
 our $VERSION = '1.4.2';
 
@@ -132,12 +131,6 @@ sub start_session {
             die "Session data must be a valid object";
         }
         
-        my @itemtypes = Koha::ItemTypes->search->as_list;
-        my @itemtype_codes = map { $_->itemtype } @itemtypes;
-
-        # Quote each item type manually
-        my @quoted_itemtypes = map { "'$_'" } @itemtype_codes;
-
         # Extract and validate session parameters with defaults
         my $minLocation = $session_data->{'minLocation'} || '';
         my $maxLocation = $session_data->{'maxLocation'} || '';
@@ -154,6 +147,13 @@ sub start_session {
         my $skipInTransitItems = $session_data->{'skipInTransitItems'} || 0;
         my $skipBranchMismatchItems = $session_data->{'skipBranchMismatchItems'} || 0;
         my $compareBarcodes = $session_data->{'compareBarcodes'} || 0;
+
+        # 'homebranch' filters by the item's home library;
+        # 'holdingbranch' filters by where the item currently resides.
+        # Default to homebranch for backwards compatibility.
+        my $branchFilter = $session_data->{'branchFilter'} || 'homebranch';
+        $branchFilter = 'homebranch'
+            unless $branchFilter eq 'holdingbranch' || $branchFilter eq 'homebranch';
         
         if ($skipCheckedOutItems) {
             $ignoreIssued = 1;
@@ -168,11 +168,13 @@ sub start_session {
         my $selectedbranchcode = $session_data->{'selectedLibraryId'} || '';
         my $shelvingLocation = $session_data->{'shelvingLocation'} || '';
 
-        # Build common parameters for both queries
+        # Build common parameters for both queries.
+        # The 'branch' key tells GetItemsForInventory which column to match
+        # against 'branchcode' — either 'homebranch' or 'holdingbranch'.
         my $common_params = {
             minlocation  => $minLocation,
             maxlocation  => $maxLocation,
-            branch       => 'holdingbranch',
+            branch       => $branchFilter,
             branchcode   => $selectedbranchcode,
             ccode        => $ccode,
         };
@@ -246,9 +248,10 @@ sub start_session {
         }
 
         my $response = {
-            location_data => $location_data,
-            total_records => $iTotalRecords,
+            location_data    => $location_data,
+            total_records    => $iTotalRecords,
             right_place_list => $rightPlaceList,
+            branch_filter    => $branchFilter,
         };
 
         # Return the JSON response
