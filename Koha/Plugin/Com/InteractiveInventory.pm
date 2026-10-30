@@ -396,8 +396,9 @@ sub _build_inventory_conditions {
     if ($branchcode) {
         my $field =
             ( $branch && $branch eq 'homebranch' )
-            ? 'me.homebranch'
-            : 'me.holdingbranch';
+            # SWAPPING HOME AND HOLDING TO PREVENT FALSE MISMATCH CHECK
+            ? 'me.holdimgbranch'
+            : 'me.homebranch';
         push @conditions, { $field => $branchcode };
     }
 
