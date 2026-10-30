@@ -1070,14 +1070,15 @@ export default {
               branchField === 'holdingbranch' ? originalHoldingBranch : originalHomeBranch
             const branchLabelForCompare =
               branchField === 'holdingbranch' ? 'current library' : 'home library'
-            if (
-              this.sessionData.selectedLibraryId &&
-              itemBranchForCompare !== this.sessionData.selectedLibraryId
-            ) {
-              reasons.push(
-                `${branchLabelForCompare} is ${itemBranchForCompare || 'unknown'}, not ${this.sessionData.selectedLibraryId}`
-              )
-            }
+            // PREVENT UNNECESSARY FALSE BRANCH MISMATCH ERROR
+            //if (
+            // this.sessionData.selectedLibraryId &&
+            //  itemBranchForCompare !== this.sessionData.selectedLibraryId
+            //) {
+            //  reasons.push(
+            //    `${branchLabelForCompare} is ${itemBranchForCompare || 'unknown'}, not ${this.sessionData.selectedLibraryId}`
+            //  )
+            //}
             const itemLocation = combinedData.location || combinedData.permanent_location
             if (
               this.sessionData.shelvingLocation &&
