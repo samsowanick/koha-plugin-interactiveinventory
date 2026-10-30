@@ -11,7 +11,7 @@ on:
 
 jobs:
   unit_tests:
-    name: Run unit tests
+    name: Run unit tests & build package
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -21,11 +21,46 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Get Koha Version Branch Name
         id: koha-version
         uses: "bywatersolutions/github-action-koha-get-version-by-label@master"
         with:
           version-label: "${{ matrix.koha-version }}"
+
+      - name: Get Koha Oldstable Version (for minimum version requirement)
+        id: koha-version-oldstable
+        uses: "bywatersolutions/github-action-koha-get-version-by-label@master"
+        with:
+          version-label: "oldstable"
+
+      - name: Read package.json
+        id: package
+        run: |
+          echo "plugin_path=$(jq -r '.plugin.pm_path' package.json)" >> $GITHUB_OUTPUT
+
+      - name: Build Koha Plugin kpz artifact
+        id: kpz
+        uses: "bywatersolutions/github-action-koha-plugin-create-kpz@master"
+        with:
+          release-version: ${{ github.ref_name }}
+          release-name: ${{ github.event.repository.name }}
+          minimum-version: ${{ steps.koha-version-oldstable.outputs.version-major-minor }}
+          plugin-module: ${{ steps.package.outputs.plugin_path }}
+
+      - name: Upload KPZ Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: koha-plugin-${{ matrix.koha-version }}
+          path: ${{ steps.kpz.outputs.filename }}
 
       - name: Check out Koha
         run: |
