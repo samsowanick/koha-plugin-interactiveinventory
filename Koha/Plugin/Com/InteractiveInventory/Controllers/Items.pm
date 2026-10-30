@@ -259,10 +259,11 @@ sub checkInItem {
                 if ($messages->{WasReturned}) {
                     $response->{was_returned} = 1;
                 }
-                if ($messages->{Wrongbranch}) {
-                    $response->{wrong_branch} = 1;
-                    $response->{correct_branch} = $messages->{Wrongbranch}->{Rightbranch};
-                }
+                # REMOVED TO PREVENT HOME/HOLDING MISMATCH WARN
+                #if ($messages->{Wrongbranch}) {
+                #    $response->{wrong_branch} = 1;
+                #    $response->{correct_branch} = $messages->{Wrongbranch}->{Rightbranch};
+                #}
                 if ($messages->{NeedsTransfer}) {
                     $response->{needs_transfer} = 1;
                     $response->{transfer_to} = $messages->{NeedsTransfer};
